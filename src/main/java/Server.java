@@ -10,7 +10,7 @@ import java.util.ArrayList;
 public class Server {
 
     private static int port = 4444;
-    private ArrayList<NewClient> clients = new ArrayList<>();
+    private static ArrayList<NewClient> clients = new ArrayList<>();
 
 
     public Server() {
@@ -22,7 +22,8 @@ public class Server {
 
             while (true) {
                 socket = server.accept();
-                NewClient newClient = new NewClient(socket, this);
+                NewClient newClient = new NewClient(socket);
+                clients.add(newClient);
                 new Thread(newClient).start();
             }
         } catch (IOException e) {
@@ -31,7 +32,7 @@ public class Server {
     }
 
         // отправляем сообщение всем клиентам
-        public void sendMessageToAllClients(String msg) {
+        public static void sendMessageToAllClients(String msg) {
             for (NewClient o : clients) {
                 o.sendMsg(msg);
             }
@@ -39,7 +40,7 @@ public class Server {
         }
 
         // удаляем клиента из коллекции при выходе из чата
-        public void removeClient(NewClient client) {
+        public static void removeClient(NewClient client) {
             clients.remove(client);
         }
 

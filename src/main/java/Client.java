@@ -3,9 +3,11 @@
  */
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.*;
 import java.net.Socket;
-import java.util.Scanner;
 
 public class Client extends JFrame{
 
@@ -20,6 +22,10 @@ public class Client extends JFrame{
     private BufferedReader reader;
     private BufferedWriter writer;
 
+    public JTextField getUserName() {
+        return UserName;
+    }
+
     public Client() {
 
         setTitle("Добро пожаловать в чат!");
@@ -31,8 +37,8 @@ public class Client extends JFrame{
         JScrollPane scrollPane = new JScrollPane(ChatPlace);
         add(scrollPane, BorderLayout.CENTER);
         inputMessage = new JTextField("");
-        JLabel clientsSum = new JLabel("Людей в чате: ");
-        UserName = new JTextField("Имя  .....");
+        JLabel clientsSum = new JLabel("Клиентов в чате = 0");
+        UserName = new JTextField("Имя  ");
         JButton button = new JButton("  Отправить  ");
 
         add(clientsSum, BorderLayout.NORTH);
@@ -43,7 +49,6 @@ public class Client extends JFrame{
         panel.add(button, BorderLayout.EAST);
         setVisible(true);
 
-
         try {
             Socket socket = new Socket(ServerName, port);
             reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -52,44 +57,53 @@ public class Client extends JFrame{
             e.printStackTrace();
         }
 
-
-        button.addActionListener(e -> {
+        // Оптправляем сообщения и принимаем
+        button.addActionListener((ActionEvent e) -> {
 
             String message = UserName.getText() + ":  " + inputMessage.getText();
             try {
                 writer.write(message);
                 writer.newLine();
                 writer.flush();
+                System.out.println("Request: " + message);
             } catch (IOException e2) {
                 e2.printStackTrace();
             }
 
-            try {
-               new Thread(new Runnable() {
-                   public void run() {
-                       // бесконечный цикл
-                       while (true) {
-                           // если есть входящее сообщение
-                           if (reader != null) {
-                               System.out.println("-------------");
-                               // считываем его
-                               String inMes = null;
-                               try {
-                                   inMes = reader.readLine();
-                               } catch (IOException e1) {
-                                   e1.printStackTrace();
-                               }
-                                   // выводим сообщение
-                                   ChatPlace.append(inMes);
-                                   // добавляем строку перехода
-                                   ChatPlace.append("\n");
-                           }
-                       }
-                   }
-               }).start();
-            } catch (Exception e1) {
-                e1.printStackTrace();
-            }
+                new Thread(() -> {
+                    while (true) {
+                        String inMes = null;
+                        try {
+                            inMes = reader.readLine();
+                        } catch (IOException e1) {
+                            e1.printStackTrace();
+                        }
+                        if (inMes != null) {
+                            int index = inMes.indexOf("Клиентов в чате =");
+                            if (index != -1)
+                                clientsSum.setText(inMes);
+                            else
+                                ChatPlace.append(inMes + "\n");
+                        }
+                    }
+                }).start();
+
+            addWindowListener(new WindowAdapter() {
+                @Override
+                public void windowClosing(WindowEvent e) {
+                    super.windowClosing(e);
+                    try {
+                        writer.append("Клиент " + UserName.getText() + " вышел из чата!");
+                        writer.flush();
+                        writer.close();
+                        reader.close();
+                    } catch (IOException c) {
+
+                    }
+                }
+            });
+
+            inputMessage.setText("");
         });
     }
 }
